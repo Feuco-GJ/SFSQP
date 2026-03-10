@@ -8,7 +8,7 @@ def sfsqp_algorithm(x0, mu0, max_iter=100, tol=1e-6):
     m_E = len(compute_eq_constraints(x0))  # 等式约束数（2）
     m_I = len(compute_ineq_constraints(x0))# 不等式约束数（2）
     
-    # 算法参数（按论文符号）
+    # 算法参数
     epsilon0 = 1.0
     u_l = 1.0
     u_g = 1.0
@@ -47,13 +47,15 @@ def sfsqp_algorithm(x0, mu0, max_iter=100, tol=1e-6):
     while not termination_condition(x, x_prev, mu, k, tol=1e-6, max_iter=100):        # -------------------- 3. 求解 QP 子问题，得到方向 (d, Dmu) --------------------
         ###Solve the subproblem (3.2) to generate the primal-dual search direction (dk , Δμk);
         d, Dmu = solve_stabilized_QP_subproblem(x, mu, B, sigma_L, mu_L)
+        print(f"迭代 {k}: d = {np.linalg.norm(d):.4e}, Dmu = {np.linalg.norm(Dmu):.4e}")
+        if np.linalg.norm(d) < 1e-5:
+            return x, mu  # 方向过小，直接返回当前解
 
         # -------------------- 4. 线搜索（从 alpha=1 开始回溯） --------------------
         ###Set α = 1, xˆ = xk + αdk , μˆ = μk + αΔμk;
         alpha = 1.0
         x_hat = x + alpha * d
         mu_hat = mu + alpha * Dmu
-        print(f"迭代 {k}: d = {np.linalg.norm(d):.4e}, Dmu = {np.linalg.norm(Dmu):.4e}")
 
         # 计算当前点的 p, phi, h, f
         p_hat = compute_stabilized_constraint_violation(x_hat, mu_hat, sigma_L, mu_L)
@@ -368,6 +370,7 @@ def compute_KKT_error(x, mu):
     # 1. 原始最优性误差
     lagrangian_grad = f_grad + c_E_jac.T @ mu_E + c_I_jac.T @ mu_I
     primal_optimality = np.linalg.norm(lagrangian_grad, 2)
+    print("KKT1: ", primal_optimality)
     
     # 2. 等式约束可行性误差
     eq_feasibility = np.linalg.norm(c_E, 2)
